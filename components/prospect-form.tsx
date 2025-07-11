@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +50,7 @@ export function ProspectForm() {
   const [isBodyComplete, setIsBodyComplete] = useState(false);
   const [showFeedbackInput, setShowFeedbackInput] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const emailBodyRef = useRef<HTMLTextAreaElement>(null);
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -119,6 +121,24 @@ export function ProspectForm() {
     setShowEmailCard(true);
     // Start generating email content
     setIsGenerating(true);
+  }
+
+  function handleSendEmail() {
+    setIsSending(true);
+    
+    // Simulate API call with a timeout
+    setTimeout(() => {
+      setIsSending(false);
+      toast.success("Email sent successfully!");
+      
+      // Reset the form and return to prospect form
+      setShowEmailCard(false);
+      setEmailSubject("");
+      setEmailBody("");
+      setIsSubjectComplete(false);
+      setIsBodyComplete(false);
+      form.reset();
+    }, 1500); // 1.5 seconds delay to simulate sending
   }
 
   return (
@@ -351,13 +371,19 @@ export function ProspectForm() {
                   </Button>
                 )}
                 <Button 
-                  disabled={isGenerating} 
+                  disabled={isGenerating || isSending} 
                   className="px-6"
+                  onClick={handleSendEmail}
                 >
                   {isGenerating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Generating
+                    </>
+                  ) : isSending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
                     </>
                   ) : (
                     "Send Email"
