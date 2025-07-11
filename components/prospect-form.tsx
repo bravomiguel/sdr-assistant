@@ -235,7 +235,7 @@ export function ProspectForm() {
                   />
                 </div>
                 <div className="flex-shrink-0 sticky bottom-0 p-6 pt-4 shadow-md">
-                  <Button type="submit" className="w-full">Submit</Button>
+                  <Button type="submit" className="w-full">Generate Email</Button>
                 </div>
               </form>
             </Form>
@@ -243,8 +243,22 @@ export function ProspectForm() {
         </Card>
       ) : (
         <Card className="w-full flex flex-col h-full">
-          <CardHeader className="flex-shrink-0">
-            <CardTitle>Email Draft</CardTitle>
+          <CardHeader className="flex-shrink-0 flex items-center justify-between relative">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute left-2" 
+              onClick={() => {
+                setShowEmailCard(false);
+                setEmailSubject("");
+                setEmailBody("");
+                setIsSubjectComplete(false);
+                setIsBodyComplete(false);
+              }}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <CardTitle className="w-full text-center">Email Draft</CardTitle>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-hidden">
             <div className="h-full flex flex-col">
