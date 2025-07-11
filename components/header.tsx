@@ -2,10 +2,19 @@ import { Plus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
-export function Header() {
+interface HeaderProps {
+  onNewForm: () => void;
+}
+
+export function Header({ onNewForm }: HeaderProps) {
   return (
     <header className="flex items-center justify-between p-4 border-b">
-      <Button variant="ghost" size="icon" className="rounded-full">
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="rounded-full"
+        onClick={onNewForm}
+      >
         <Plus className="h-5 w-5" />
         <span className="sr-only">New Form</span>
       </Button>
@@ -14,7 +23,7 @@ export function Header() {
       
       <Avatar>
         <AvatarImage src="/avatar.png" alt="User" />
-        <AvatarFallback>U</AvatarFallback>
+        <AvatarFallback>W</AvatarFallback>
       </Avatar>
     </header>
   );
