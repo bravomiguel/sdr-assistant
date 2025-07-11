@@ -350,7 +350,12 @@ export function ProspectForm() {
                       disabled={isGenerating} 
                       className="px-6"
                       onClick={() => {
-                        // This would handle regeneration in a real implementation
+                        // Reset email content and trigger regeneration
+                        setEmailSubject("");
+                        setEmailBody("");
+                        setIsSubjectComplete(false);
+                        setIsBodyComplete(false);
+                        setIsGenerating(true);
                         setShowFeedbackInput(false);
                         setFeedbackText("");
                       }}
