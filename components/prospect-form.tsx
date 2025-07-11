@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -47,6 +47,9 @@ export function ProspectForm() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubjectComplete, setIsSubjectComplete] = useState(false);
   const [isBodyComplete, setIsBodyComplete] = useState(false);
+  const [showFeedbackInput, setShowFeedbackInput] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const emailBodyRef = useRef<HTMLTextAreaElement>(null);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -86,6 +89,13 @@ export function ProspectForm() {
             if (bodyIndex < dummyBody.length) {
               setEmailBody(prev => prev + dummyBody[bodyIndex]);
               bodyIndex++;
+              
+              // Scroll to the bottom of the textarea when new content is added
+              setTimeout(() => {
+                if (emailBodyRef.current) {
+                  emailBodyRef.current.scrollTop = emailBodyRef.current.scrollHeight;
+                }
+              }, 0);
             } else {
               clearInterval(bodyInterval);
               setIsBodyComplete(true);
@@ -257,15 +267,75 @@ export function ProspectForm() {
                   <FormLabel className="flex-shrink-0">Email Body</FormLabel>
                   <div className="flex-grow relative min-h-0">
                     <Textarea 
+                      ref={emailBodyRef}
                       value={emailBody} 
                       readOnly 
                       className={`resize-none absolute inset-0 h-full w-full overflow-auto ${!isBodyComplete ? "animate-pulse" : ""}`}
                     />
+
                   </div>
                 </div>
               </div>
               
-              <div className="flex-shrink-0 sticky bottom-0 p-6 pt-4 shadow-md flex justify-end">
+
+
+              <div className="flex-shrink-0 sticky bottom-0 p-6 pt-4 flex justify-between relative">
+                {showFeedbackInput && (
+                  <div className="absolute bottom-full left-0 right-0 bg-white px-6 pb-2 pt-3">
+                
+                    <Textarea 
+                      placeholder="Enter optional feedback to regenerate email..."
+                      className="resize-none overflow-auto mt-1"
+                      style={{
+                        minHeight: '2.5rem',
+                        maxHeight: '10rem',
+                        height: 'auto'
+                      }}
+                      value={feedbackText}
+                      onChange={(e) => setFeedbackText(e.target.value)}
+                      autoFocus
+                      rows={1}
+                    />
+                  </div>
+                )}
+                {showFeedbackInput ? (
+                  <div className="flex space-x-2">
+                    <Button 
+                      variant="outline"
+                      size="icon"
+                      disabled={isGenerating} 
+                      onClick={() => {
+                        setShowFeedbackInput(false);
+                        setFeedbackText("");
+                      }}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      disabled={isGenerating} 
+                      className="px-6"
+                      onClick={() => {
+                        // This would handle regeneration in a real implementation
+                        setShowFeedbackInput(false);
+                        setFeedbackText("");
+                      }}
+                    >
+                      Regenerate
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="outline"
+                    disabled={isGenerating} 
+                    className="px-6"
+                    onClick={() => {
+                      setShowFeedbackInput(true);
+                    }}
+                  >
+                    Suggest Edits
+                  </Button>
+                )}
                 <Button 
                   disabled={isGenerating} 
                   className="px-6"
