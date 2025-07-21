@@ -17,140 +17,147 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, Loader2 } from "lucide-react";
-
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  company: z.string().min(1, {
-    message: "Company name is required.",
-  }),
-  website: z.string().url({
-    message: "Please enter a valid URL.",
-  }).optional().or(z.literal("")),
-  doorCount: z.string().min(1, {
-    message: "Door count is required.",
-  }),
-  propertyManagementSoftware: z.string().min(1, {
-    message: "Property management software is required.",
-  }),
-  notes: z.string().optional(),
-});
+import { useStreamContext } from "@/providers/stream-provider";
+import { formSchema } from "@/lib/schemas";
+import { FormValues, InterruptResponse, InterruptValue } from "@/lib/types";
 
 export function ProspectForm() {
-  const [showEmailCard, setShowEmailCard] = useState(false);
-  const [formData, setFormData] = useState<z.infer<typeof formSchema> | null>(null);
-  const [emailSubject, setEmailSubject] = useState("");
-  const [emailBody, setEmailBody] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSubjectComplete, setIsSubjectComplete] = useState(false);
-  const [isBodyComplete, setIsBodyComplete] = useState(false);
   const [showFeedbackInput, setShowFeedbackInput] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [backToForm, setBackToForm] = useState(false);
   const emailBodyRef = useRef<HTMLTextAreaElement>(null);
-  
-  const form = useForm<z.infer<typeof formSchema>>({
+
+  const { submit, interrupt, ...stream } = useStreamContext();
+  const lastError = useRef<string | undefined>(undefined);
+  const interruptValue = interrupt?.value as InterruptValue | undefined;
+
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       email: "",
       company: "",
       website: "",
-      doorCount: "",
-      propertyManagementSoftware: "",
+      door_count: "",
+      property_management_software: "",
       notes: "",
     },
   });
 
-  // Simulate streaming of subject and body content
-  useEffect(() => {
-    if (showEmailCard && isGenerating) {
-      // Dummy subject content
-      const dummySubject = `Partnership opportunity with ${formData?.company}`;
-      let subjectIndex = 0;
-      
-      // Dummy email body content
-      const dummyBody = `Dear ${formData?.name},\n\nI hope this email finds you well. I recently came across ${formData?.company} and was impressed by your property management solutions.\n\nGiven that you manage approximately ${formData?.doorCount} doors and use ${formData?.propertyManagementSoftware} for your property management needs, I believe our services could bring significant value to your operations.\n\nWould you be available for a brief call next week to discuss how we might be able to help streamline your property management processes?\n\nBest regards,\nYour SDR`;
-      let bodyIndex = 0;
-      
-      // Stream subject content
-      const subjectInterval = setInterval(() => {
-        if (subjectIndex < dummySubject.length) {
-          setEmailSubject(prev => prev + dummySubject[subjectIndex]);
-          subjectIndex++;
-        } else {
-          clearInterval(subjectInterval);
-          setIsSubjectComplete(true);
-          
-          // Start streaming body content after subject is complete
-          const bodyInterval = setInterval(() => {
-            if (bodyIndex < dummyBody.length) {
-              setEmailBody(prev => prev + dummyBody[bodyIndex]);
-              bodyIndex++;
-              
-              // Scroll to the bottom of the textarea when new content is added
-              setTimeout(() => {
-                if (emailBodyRef.current) {
-                  emailBodyRef.current.scrollTop = emailBodyRef.current.scrollHeight;
-                }
-              }, 0);
-            } else {
-              clearInterval(bodyInterval);
-              setIsBodyComplete(true);
-              setIsGenerating(false);
-            }
-          }, 30); // Adjust speed as needed
-        }
-      }, 50); // Adjust speed as needed
-      
-      return () => {
-        clearInterval(subjectInterval);
-      };
-    }
-  }, [showEmailCard, isGenerating, formData]);
+  console.log({ form });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(values: FormValues) {
     console.log(values);
-    // Save form data
-    setFormData(values);
-    // Show email card
-    setShowEmailCard(true);
-    // Start generating email content
-    setIsGenerating(true);
+
+    submit(
+      {
+        prospect_info: values,
+      },
+      {
+        // config: {
+        //   configurable: {
+        //     user_id: session.user.id,
+        //   },
+        // },
+        streamMode: ["values"],
+        // optimisticValues: (prev) => ({
+        //   ...prev,
+        //   messages: [...(prev.messages ?? []), newHumanMessage],
+        // }),
+      }
+    );
   }
 
-  function handleSendEmail() {
-    setIsSending(true);
-    
-    // Simulate API call with a timeout
-    setTimeout(() => {
+  function handleInterruptResponse({ type }: InterruptResponse) {
+    if (type === "accept") {
+      setIsSending(true);
+      submit(
+        {},
+        {
+          command: {
+            resume: {
+              type: "accept",
+            },
+          },
+        }
+      );
       setIsSending(false);
-      toast.success("Email sent successfully!");
-      
-      // Reset the form and return to prospect form
-      setShowEmailCard(false);
-      setEmailSubject("");
-      setEmailBody("");
-      setIsSubjectComplete(false);
-      setIsBodyComplete(false);
-      form.reset();
-    }, 1500); // 1.5 seconds delay to simulate sending
+    }
+
+    if (type === "reject") {
+      submit(
+        {},
+        {
+          command: {
+            resume: {
+              type: "reject",
+            },
+          },
+        }
+      );
+    }
+
+    if (type === "feedback") {
+      submit(
+        {},
+        {
+          command: {
+            resume: {
+              type: "feedback",
+              feedback:
+                feedbackText.length > 0
+                  ? feedbackText
+                  : "No user feedback available.",
+            },
+          },
+        }
+      );
+    }
   }
+
+  // Error handling
+  useEffect(() => {
+    if (!stream.error) {
+      lastError.current = undefined;
+      return;
+    }
+    try {
+      const message = (stream.error as any).message;
+      if (!message || lastError.current === message) {
+        // Message has already been logged. do not modify ref, return early.
+        return;
+      }
+
+      // Message is defined, and it has not been logged yet. Save it, and send the error
+      lastError.current = message;
+      toast.error("An error occurred. Please try again.", {
+        description: (
+          <p>
+            <strong>Error:</strong> <code>{message}</code>
+          </p>
+        ),
+        richColors: true,
+        closeButton: true,
+      });
+    } catch {
+      // no-op
+    }
+  }, [stream.error]);
 
   return (
     <div className="flex flex-col h-full">
-      {!showEmailCard ? (
+      {!stream || backToForm ? (
         <Card className="w-full flex flex-col h-full">
           <CardHeader className="flex-shrink-0">
             <CardTitle>Prospect Information</CardTitle>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-hidden">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="h-full flex flex-col"
+              >
                 <div className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
                   <FormField
                     control={form.control}
@@ -165,7 +172,7 @@ export function ProspectForm() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="email"
@@ -173,13 +180,16 @@ export function ProspectForm() {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input placeholder="john.doe@example.com" {...field} />
+                          <Input
+                            placeholder="john.doe@example.com"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="company"
@@ -193,7 +203,7 @@ export function ProspectForm() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="website"
@@ -207,10 +217,10 @@ export function ProspectForm() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
-                    name="doorCount"
+                    name="door_count"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Door Count</FormLabel>
@@ -221,21 +231,24 @@ export function ProspectForm() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
-                    name="propertyManagementSoftware"
+                    name="property_management_software"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Property Management Software</FormLabel>
                         <FormControl>
-                          <Input placeholder="Yardi, Buildium, etc." {...field} />
+                          <Input
+                            placeholder="Yardi, Buildium, etc."
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="notes"
@@ -243,7 +256,7 @@ export function ProspectForm() {
                       <FormItem>
                         <FormLabel>Anything Else (Optional)</FormLabel>
                         <FormControl>
-                          <Textarea 
+                          <Textarea
                             placeholder="Additional notes about the prospect..."
                             className="resize-none"
                             {...field}
@@ -255,7 +268,9 @@ export function ProspectForm() {
                   />
                 </div>
                 <div className="flex-shrink-0 sticky bottom-0 p-6 pt-4 shadow-md">
-                  <Button type="submit" className="w-full">Generate Email</Button>
+                  <Button type="submit" className="w-full">
+                    Generate Email
+                  </Button>
                 </div>
               </form>
             </Form>
@@ -264,16 +279,12 @@ export function ProspectForm() {
       ) : (
         <Card className="w-full flex flex-col h-full">
           <CardHeader className="flex-shrink-0 flex items-center justify-between relative">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="absolute left-2" 
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-2"
               onClick={() => {
-                setShowEmailCard(false);
-                setEmailSubject("");
-                setEmailBody("");
-                setIsSubjectComplete(false);
-                setIsBodyComplete(false);
+                setBackToForm(true);
               }}
             >
               <ChevronLeft className="h-5 w-5" />
@@ -285,45 +296,46 @@ export function ProspectForm() {
               <div className="flex-1 px-6 py-4 flex flex-col space-y-4">
                 <div className="space-y-2 flex-shrink-0">
                   <FormLabel>To</FormLabel>
-                  <Input value={formData?.email || ""} readOnly />
-                </div>
-                
-                <div className="space-y-2 flex-shrink-0">
-                  <FormLabel>Subject</FormLabel>
-                  <Input 
-                    value={emailSubject} 
-                    readOnly 
-                    className={!isSubjectComplete ? "animate-pulse" : ""}
+                  <Input
+                    value={stream.values.prospect_info?.email || ""}
+                    readOnly
                   />
                 </div>
-                
+
+                <div className="space-y-2 flex-shrink-0">
+                  <FormLabel>Subject</FormLabel>
+                  <Input
+                    value={stream.values.email_content?.subject || ""}
+                    readOnly
+                    className={stream.isLoading ? "animate-pulse" : ""}
+                  />
+                </div>
+
                 <div className="space-y-2 flex-grow flex flex-col min-h-0">
                   <FormLabel className="flex-shrink-0">Email Body</FormLabel>
                   <div className="flex-grow relative min-h-0">
-                    <Textarea 
+                    <Textarea
                       ref={emailBodyRef}
-                      value={emailBody} 
-                      readOnly 
-                      className={`resize-none absolute inset-0 h-full w-full overflow-auto ${!isBodyComplete ? "animate-pulse" : ""}`}
+                      value={stream.values.email_content?.body || ""}
+                      readOnly
+                      className={`resize-none absolute inset-0 h-full w-full overflow-auto ${
+                        stream.isLoading ? "animate-pulse" : ""
+                      }`}
                     />
-
                   </div>
                 </div>
               </div>
-              
-
 
               <div className="flex-shrink-0 sticky bottom-0 p-6 pt-4 flex justify-between relative">
                 {showFeedbackInput && (
                   <div className="absolute bottom-full left-0 right-0 bg-white px-6 pb-2 pt-3">
-                
-                    <Textarea 
+                    <Textarea
                       placeholder="Enter optional feedback to regenerate email..."
                       className="resize-none overflow-auto mt-1"
                       style={{
-                        minHeight: '2.5rem',
-                        maxHeight: '10rem',
-                        height: 'auto'
+                        minHeight: "2.5rem",
+                        maxHeight: "10rem",
+                        height: "auto",
                       }}
                       value={feedbackText}
                       onChange={(e) => setFeedbackText(e.target.value)}
@@ -334,10 +346,10 @@ export function ProspectForm() {
                 )}
                 {showFeedbackInput ? (
                   <div className="flex space-x-2">
-                    <Button 
+                    <Button
                       variant="outline"
                       size="icon"
-                      disabled={isGenerating} 
+                      disabled={stream.isLoading}
                       onClick={() => {
                         setShowFeedbackInput(false);
                         setFeedbackText("");
@@ -345,17 +357,16 @@ export function ProspectForm() {
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <Button 
+                    <Button
                       variant="outline"
-                      disabled={isGenerating} 
+                      disabled={stream.isLoading}
                       className="px-6"
                       onClick={() => {
                         // Reset email content and trigger regeneration
-                        setEmailSubject("");
-                        setEmailBody("");
-                        setIsSubjectComplete(false);
-                        setIsBodyComplete(false);
-                        setIsGenerating(true);
+                        handleInterruptResponse({
+                          type: "feedback",
+                          feedback: feedbackText,
+                        });
                         setShowFeedbackInput(false);
                         setFeedbackText("");
                       }}
@@ -364,9 +375,9 @@ export function ProspectForm() {
                     </Button>
                   </div>
                 ) : (
-                  <Button 
+                  <Button
                     variant="outline"
-                    disabled={isGenerating} 
+                    disabled={stream.isLoading}
                     className="px-6"
                     onClick={() => {
                       setShowFeedbackInput(true);
@@ -375,20 +386,20 @@ export function ProspectForm() {
                     Suggest Edits
                   </Button>
                 )}
-                <Button 
-                  disabled={isGenerating || isSending} 
+                <Button
+                  disabled={stream.isLoading}
                   className="px-6"
-                  onClick={handleSendEmail}
+                  onClick={() => handleInterruptResponse({ type: "accept" })}
                 >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating
-                    </>
-                  ) : isSending ? (
+                  {isSending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Sending...
+                    </>
+                  ) : stream.isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
                     </>
                   ) : (
                     "Send Email"
