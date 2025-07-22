@@ -1,17 +1,16 @@
 "use client";
 
-import React, { createContext, useContext, useEffect } from "react";
+import React, { createContext, useContext, useEffect, useRef } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
-import { type Message } from "@langchain/langgraph-sdk";
 import {
   uiMessageReducer,
   type UIMessage,
   type RemoveUIMessage,
 } from "@langchain/langgraph-sdk/react-ui";
+import { toast } from "sonner";
+
 import { useThreads } from "./thread-provider";
 import { ThreadState } from "@/lib/types";
-import { sleep } from "@/lib/utils";
-import { threadId } from "worker_threads";
 
 type StreamProviderProps = {
   children: React.ReactNode;
@@ -40,6 +39,7 @@ const StreamContext = createContext<StreamContextType | null>(null);
 
 export function StreamProvider({ children }: StreamProviderProps) {
   const { activeThreadId, setActiveThreadId } = useThreads();
+  const lastError = useRef<string | undefined>(undefined);
 
   const streamValue = useTypedStream({
     apiUrl: process.env.NEXT_PUBLIC_LANGGRAPH_API_URL,
@@ -51,8 +51,37 @@ export function StreamProvider({ children }: StreamProviderProps) {
         return { ...prev, ui };
       });
     },
-    onThreadId: setActiveThreadId
+    onThreadId: setActiveThreadId,
   });
+
+  // Error handling
+  useEffect(() => {
+    if (!streamValue.error) {
+      lastError.current = undefined;
+      return;
+    }
+    try {
+      const message = (streamValue.error as any).message;
+      if (!message || lastError.current === message) {
+        // Message has already been logged. do not modify ref, return early.
+        return;
+      }
+
+      // Message is defined, and it has not been logged yet. Save it, and send the error
+      lastError.current = message;
+      toast.error("An error occurred. Please try again.", {
+        description: (
+          <p>
+            <strong>Error:</strong> <code>{message}</code>
+          </p>
+        ),
+        richColors: true,
+        closeButton: true,
+      });
+    } catch {
+      // no-op
+    }
+  }, [streamValue.error]);
 
   return (
     <StreamContext.Provider value={streamValue}>

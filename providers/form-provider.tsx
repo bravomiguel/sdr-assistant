@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext } from "react";
+import React, {
+  createContext,
+  Dispatch,
+  SetStateAction,
+  useContext,
+  useState,
+} from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, UseFormReturn } from "react-hook-form";
 
@@ -16,9 +22,13 @@ type FormProviderProps = {
 const FormContext = createContext<{
   form: UseFormReturn<FormValues>;
   handleNewForm: () => void;
+  toEmail: string;
+  isInitGen: boolean;
+  setIsInitGen: Dispatch<SetStateAction<boolean>>;
 } | null>(null);
 
 export function FormProvider({ children }: FormProviderProps) {
+  const [isInitGen, setIsInitGen] = useState(false);
   const { resetActiveThread } = useThreads();
 
   const form = useForm<FormValues>({
@@ -26,13 +36,18 @@ export function FormProvider({ children }: FormProviderProps) {
     defaultValues,
   });
 
+  const toEmail = form.watch("email");
+
   const handleNewForm = () => {
+    setIsInitGen(false);
     form.reset(defaultValues);
     resetActiveThread();
   };
 
   return (
-    <FormContext.Provider value={{ form, handleNewForm }}>
+    <FormContext.Provider
+      value={{ form, handleNewForm, toEmail, isInitGen, setIsInitGen }}
+    >
       {children}
     </FormContext.Provider>
   );

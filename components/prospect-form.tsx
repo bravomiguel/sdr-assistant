@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2, X } from "lucide-react";
 import { useStreamContext } from "@/providers/stream-provider";
 import { FormValues, InterruptResponse } from "@/lib/types";
 import { useThreads } from "@/providers/thread-provider";
@@ -31,14 +31,16 @@ export function ProspectForm() {
   const emailBodyRef = useRef<HTMLTextAreaElement>(null);
 
   const { submit, ...stream } = useStreamContext();
-  const lastError = useRef<string | undefined>(undefined);
 
-  const { activeThreadId, setActiveThreadId, resetActiveThread } = useThreads();
+  const { activeThreadId, setActiveThreadId } = useThreads();
 
-  const { form, handleNewForm } = useFormContext();
+  const { form, handleNewForm, toEmail, setIsInitGen, isInitGen } =
+    useFormContext();
 
   const onSubmit = async (values: FormValues) => {
-    await sleep(500);
+    setIsInitGen(true);
+
+    await sleep(600);
 
     submit(
       {
@@ -87,40 +89,10 @@ export function ProspectForm() {
   useEffect(() => {
     if (isSending && !stream.isLoading) {
       setIsSending(false);
-      form.reset(defaultValues);
-      resetActiveThread();
+      handleNewForm();
       toast.success("Email sent successfully");
     }
   }, [stream.isLoading, isSending]);
-
-  // Error handling
-  useEffect(() => {
-    if (!stream.error) {
-      lastError.current = undefined;
-      return;
-    }
-    try {
-      const message = (stream.error as any).message;
-      if (!message || lastError.current === message) {
-        // Message has already been logged. do not modify ref, return early.
-        return;
-      }
-
-      // Message is defined, and it has not been logged yet. Save it, and send the error
-      lastError.current = message;
-      toast.error("An error occurred. Please try again.", {
-        description: (
-          <p>
-            <strong>Error:</strong> <code>{message}</code>
-          </p>
-        ),
-        richColors: true,
-        closeButton: true,
-      });
-    } catch {
-      // no-op
-    }
-  }, [stream.error]);
 
   return (
     <div className="flex flex-col h-full">
@@ -245,12 +217,8 @@ export function ProspectForm() {
                   />
                 </div>
                 <div className="flex-shrink-0 sticky bottom-0 p-6 pt-4 shadow-md">
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={stream.isLoading}
-                  >
-                    {stream.isLoading ? (
+                  <Button type="submit" className="w-full" disabled={isInitGen}>
+                    {isInitGen ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Generating...
@@ -286,7 +254,7 @@ export function ProspectForm() {
                 <div className="space-y-2 flex-shrink-0">
                   <FormLabel>To</FormLabel>
                   <Input
-                    value={stream.values.prospect_info?.email || ""}
+                    value={toEmail || stream.values.prospect_info?.email}
                     readOnly
                   />
                 </div>
@@ -344,7 +312,7 @@ export function ProspectForm() {
                         setFeedbackText("");
                       }}
                     >
-                      <ChevronLeft className="h-4 w-4" />
+                      <X className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
@@ -379,7 +347,9 @@ export function ProspectForm() {
                   <Button
                     variant="outline"
                     disabled={stream.isLoading}
-                    onClick={handleNewForm}
+                    onClick={() => {
+                      handleNewForm();
+                    }}
                   >
                     Discard
                   </Button>
@@ -392,6 +362,8 @@ export function ProspectForm() {
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Sending...
                       </>
+                    ) : stream.isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       "Send"
                     )}
