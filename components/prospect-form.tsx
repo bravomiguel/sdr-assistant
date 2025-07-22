@@ -1,5 +1,5 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+"use client";
+
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -17,45 +17,28 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { useStreamContext } from "@/providers/stream-provider";
-import { formSchema } from "@/lib/schemas";
 import { FormValues, InterruptResponse } from "@/lib/types";
 import { useThreads } from "@/providers/thread-provider";
 import { sleep } from "@/lib/utils";
-
-const defaultValues = {
-  name: "",
-  email: "",
-  company: "",
-  website: "",
-  door_count: "",
-  property_management_software: "",
-  notes: "",
-};
+import { useFormContext } from "@/providers/form-provider";
+import { defaultValues } from "@/lib/constants";
 
 export function ProspectForm() {
   const [showFeedbackInput, setShowFeedbackInput] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [isDiscarding, setIsDiscarding] = useState(false);
 
   const emailBodyRef = useRef<HTMLTextAreaElement>(null);
 
   const { submit, ...stream } = useStreamContext();
   const lastError = useRef<string | undefined>(undefined);
 
-  const { activeThreadId, setActiveThreadId } = useThreads();
+  const { activeThreadId, setActiveThreadId, resetActiveThread } = useThreads();
 
-  console.log({ activeThreadId });
+  const { form, handleNewForm } = useFormContext();
 
-  console.log({ stream });
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues,
-  });
-
-  async function onSubmit(values: FormValues) {
-    console.log(values);
+  const onSubmit = async (values: FormValues) => {
+    await sleep(500);
 
     submit(
       {
@@ -65,9 +48,9 @@ export function ProspectForm() {
         streamMode: ["values"],
       }
     );
-  }
+  };
 
-  async function handleInterruptResponse({ type }: InterruptResponse) {
+  const handleInterruptResponse = ({ type }: InterruptResponse) => {
     if (type === "accept") {
       setIsSending(true);
       submit(
@@ -76,20 +59,6 @@ export function ProspectForm() {
           command: {
             resume: {
               type: "accept",
-            },
-          },
-        }
-      );
-    }
-
-    if (type === "reject") {
-      setIsDiscarding(true);
-      submit(
-        {},
-        {
-          command: {
-            resume: {
-              type: "reject",
             },
           },
         }
@@ -112,23 +81,17 @@ export function ProspectForm() {
         }
       );
     }
-  }
+  };
 
+  // wait for submit to finish before cleaning up accept action
   useEffect(() => {
     if (isSending && !stream.isLoading) {
       setIsSending(false);
       form.reset(defaultValues);
-      setActiveThreadId(null);
+      resetActiveThread();
       toast.success("Email sent successfully");
     }
-
-    if (isDiscarding && !stream.isLoading) {
-      setIsDiscarding(false);
-      form.reset(defaultValues);
-      setActiveThreadId(null);
-      toast.info("Email discarded");
-    }
-  }, [stream.isLoading, isSending, isDiscarding]);
+  }, [stream.isLoading, isSending]);
 
   // Error handling
   useEffect(() => {
@@ -415,17 +378,10 @@ export function ProspectForm() {
                 <div className="flex space-x-2">
                   <Button
                     variant="outline"
-                    disabled={stream.isLoading || isDiscarding}
-                    onClick={() => handleInterruptResponse({ type: "reject" })}
+                    disabled={stream.isLoading}
+                    onClick={handleNewForm}
                   >
-                    {isDiscarding ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Discarding...
-                      </>
-                    ) : (
-                      "Discard"
-                    )}
+                    Discard
                   </Button>
                   <Button
                     disabled={stream.isLoading || isSending}

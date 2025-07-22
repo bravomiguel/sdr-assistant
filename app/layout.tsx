@@ -3,9 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { QueryProvider } from "@/providers/query-provider";
 import { ThreadProvider } from "@/providers/thread-provider";
 import { StreamProvider } from "@/providers/stream-provider";
+import { FormProvider } from "@/providers/form-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,11 +34,11 @@ export default function RootLayout({
       >
         <NuqsAdapter>
           <Toaster position="top-center" />
-          <QueryProvider>
-            <ThreadProvider>
-              <StreamProvider>{children}</StreamProvider>
-            </ThreadProvider>
-          </QueryProvider>
+          <ThreadProvider>
+            <StreamProvider>
+              <FormProvider>{children}</FormProvider>
+            </StreamProvider>
+          </ThreadProvider>
         </NuqsAdapter>
       </body>
     </html>

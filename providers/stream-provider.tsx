@@ -11,6 +11,7 @@ import {
 import { useThreads } from "./thread-provider";
 import { ThreadState } from "@/lib/types";
 import { sleep } from "@/lib/utils";
+import { threadId } from "worker_threads";
 
 type StreamProviderProps = {
   children: React.ReactNode;
@@ -50,7 +51,7 @@ export function StreamProvider({ children }: StreamProviderProps) {
         return { ...prev, ui };
       });
     },
-    onThreadId: setActiveThreadId,
+    onThreadId: setActiveThreadId
   });
 
   return (
