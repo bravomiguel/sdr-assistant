@@ -35,6 +35,7 @@ export function ThreadProvider({ children }: ThreadProviderProps) {
   useEffect(() => {
     if (newThread) {
       setActiveThreadId(newThread.thread_id);
+      console.log({ newThread });
     }
   }, [newThread, setActiveThreadId]);
 

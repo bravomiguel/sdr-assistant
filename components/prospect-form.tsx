@@ -1,6 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -19,52 +18,52 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { useStreamContext } from "@/providers/stream-provider";
 import { formSchema } from "@/lib/schemas";
-import { FormValues, InterruptResponse, InterruptValue } from "@/lib/types";
+import { FormValues, InterruptResponse } from "@/lib/types";
+import { useThreads } from "@/providers/thread-provider";
+
+const defaultValues = {
+  name: "",
+  email: "",
+  company: "",
+  website: "",
+  door_count: "",
+  property_management_software: "",
+  notes: "",
+};
 
 export function ProspectForm() {
   const [showFeedbackInput, setShowFeedbackInput] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [backToForm, setBackToForm] = useState(false);
   const emailBodyRef = useRef<HTMLTextAreaElement>(null);
 
-  const { submit, interrupt, ...stream } = useStreamContext();
+  const { submit, ...stream } = useStreamContext();
   const lastError = useRef<string | undefined>(undefined);
-  const interruptValue = interrupt?.value as InterruptValue | undefined;
+
+
+  const { activeThreadId, setActiveThreadId, createThread } =
+    useThreads();
+
+  console.log({ activeThreadId });
+
+  console.log({ stream });
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      company: "",
-      website: "",
-      door_count: "",
-      property_management_software: "",
-      notes: "",
-    },
+    defaultValues,
   });
-
-  console.log({ form });
 
   function onSubmit(values: FormValues) {
     console.log(values);
+
+    // createThread();
 
     submit(
       {
         prospect_info: values,
       },
       {
-        // config: {
-        //   configurable: {
-        //     user_id: session.user.id,
-        //   },
-        // },
         streamMode: ["values"],
-        // optimisticValues: (prev) => ({
-        //   ...prev,
-        //   messages: [...(prev.messages ?? []), newHumanMessage],
-        // }),
       }
     );
   }
@@ -83,6 +82,9 @@ export function ProspectForm() {
         }
       );
       setIsSending(false);
+      form.reset(defaultValues);
+      setActiveThreadId(null);
+      toast.success("Email sent successfully");
     }
 
     if (type === "reject") {
@@ -96,6 +98,10 @@ export function ProspectForm() {
           },
         }
       );
+
+      form.reset(defaultValues);
+      setActiveThreadId(null);
+      toast.info("Email discarded");
     }
 
     if (type === "feedback") {
@@ -147,7 +153,7 @@ export function ProspectForm() {
 
   return (
     <div className="flex flex-col h-full">
-      {!stream || backToForm ? (
+      {!activeThreadId ? (
         <Card className="w-full flex flex-col h-full">
           <CardHeader className="flex-shrink-0">
             <CardTitle>Prospect Information</CardTitle>
@@ -268,8 +274,19 @@ export function ProspectForm() {
                   />
                 </div>
                 <div className="flex-shrink-0 sticky bottom-0 p-6 pt-4 shadow-md">
-                  <Button type="submit" className="w-full">
-                    Generate Email
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={stream.isLoading}
+                  >
+                    {stream.isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      "Generate Email"
+                    )}
                   </Button>
                 </div>
               </form>
@@ -284,7 +301,8 @@ export function ProspectForm() {
               size="icon"
               className="absolute left-2"
               onClick={() => {
-                setBackToForm(true);
+                form.reset(stream.values?.prospect_info || defaultValues);
+                setActiveThreadId(null);
               }}
             >
               <ChevronLeft className="h-5 w-5" />
@@ -378,7 +396,6 @@ export function ProspectForm() {
                   <Button
                     variant="outline"
                     disabled={stream.isLoading}
-                    className="px-6"
                     onClick={() => {
                       setShowFeedbackInput(true);
                     }}
@@ -386,25 +403,34 @@ export function ProspectForm() {
                     Suggest Edits
                   </Button>
                 )}
-                <Button
-                  disabled={stream.isLoading}
-                  className="px-6"
-                  onClick={() => handleInterruptResponse({ type: "accept" })}
-                >
-                  {isSending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending...
-                    </>
-                  ) : stream.isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    "Send Email"
-                  )}
-                </Button>
+
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    disabled={stream.isLoading}
+                    onClick={() => handleInterruptResponse({ type: "reject" })}
+                  >
+                    Discard
+                  </Button>
+                  <Button
+                    disabled={stream.isLoading}
+                    onClick={() => handleInterruptResponse({ type: "accept" })}
+                  >
+                    {isSending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : stream.isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      "Send"
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>

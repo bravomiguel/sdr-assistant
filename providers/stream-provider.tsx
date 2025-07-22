@@ -10,6 +10,7 @@ import {
 } from "@langchain/langgraph-sdk/react-ui";
 import { useThreads } from "./thread-provider";
 import { ThreadState } from "@/lib/types";
+import { sleep } from "@/lib/utils";
 
 type StreamProviderProps = {
   children: React.ReactNode;
@@ -51,6 +52,8 @@ export function StreamProvider({ children }: StreamProviderProps) {
     },
     onThreadId: async (id) => {
       //   await updateThreadAction(id);
+      // await sleep(500);
+      console.log({ id });
       setActiveThreadId(id);
     },
   });
