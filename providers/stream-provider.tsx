@@ -43,19 +43,14 @@ export function StreamProvider({ children }: StreamProviderProps) {
   const streamValue = useTypedStream({
     apiUrl: process.env.NEXT_PUBLIC_LANGGRAPH_API_URL,
     assistantId: process.env.NEXT_PUBLIC_LANGGRAPH_GRAPH_ID ?? "agent",
-    threadId: activeThreadId ?? null,
+    threadId: activeThreadId,
     onCustomEvent: (event, options) => {
       options.mutate((prev) => {
         const ui = uiMessageReducer(prev.ui ?? [], event);
         return { ...prev, ui };
       });
     },
-    onThreadId: async (id) => {
-      //   await updateThreadAction(id);
-      // await sleep(500);
-      console.log({ id });
-      setActiveThreadId(id);
-    },
+    onThreadId: setActiveThreadId,
   });
 
   return (

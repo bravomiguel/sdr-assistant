@@ -20,6 +20,7 @@ import { useStreamContext } from "@/providers/stream-provider";
 import { formSchema } from "@/lib/schemas";
 import { FormValues, InterruptResponse } from "@/lib/types";
 import { useThreads } from "@/providers/thread-provider";
+import { sleep } from "@/lib/utils";
 
 const defaultValues = {
   name: "",
@@ -35,14 +36,14 @@ export function ProspectForm() {
   const [showFeedbackInput, setShowFeedbackInput] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
+
   const emailBodyRef = useRef<HTMLTextAreaElement>(null);
 
   const { submit, ...stream } = useStreamContext();
   const lastError = useRef<string | undefined>(undefined);
 
-
-  const { activeThreadId, setActiveThreadId, createThread } =
-    useThreads();
+  const { activeThreadId, setActiveThreadId } = useThreads();
 
   console.log({ activeThreadId });
 
@@ -53,10 +54,8 @@ export function ProspectForm() {
     defaultValues,
   });
 
-  function onSubmit(values: FormValues) {
+  async function onSubmit(values: FormValues) {
     console.log(values);
-
-    // createThread();
 
     submit(
       {
@@ -68,7 +67,7 @@ export function ProspectForm() {
     );
   }
 
-  function handleInterruptResponse({ type }: InterruptResponse) {
+  async function handleInterruptResponse({ type }: InterruptResponse) {
     if (type === "accept") {
       setIsSending(true);
       submit(
@@ -81,13 +80,10 @@ export function ProspectForm() {
           },
         }
       );
-      setIsSending(false);
-      form.reset(defaultValues);
-      setActiveThreadId(null);
-      toast.success("Email sent successfully");
     }
 
     if (type === "reject") {
+      setIsDiscarding(true);
       submit(
         {},
         {
@@ -98,10 +94,6 @@ export function ProspectForm() {
           },
         }
       );
-
-      form.reset(defaultValues);
-      setActiveThreadId(null);
-      toast.info("Email discarded");
     }
 
     if (type === "feedback") {
@@ -121,6 +113,22 @@ export function ProspectForm() {
       );
     }
   }
+
+  useEffect(() => {
+    if (isSending && !stream.isLoading) {
+      setIsSending(false);
+      form.reset(defaultValues);
+      setActiveThreadId(null);
+      toast.success("Email sent successfully");
+    }
+
+    if (isDiscarding && !stream.isLoading) {
+      setIsDiscarding(false);
+      form.reset(defaultValues);
+      setActiveThreadId(null);
+      toast.info("Email discarded");
+    }
+  }, [stream.isLoading, isSending, isDiscarding]);
 
   // Error handling
   useEffect(() => {
@@ -407,24 +415,26 @@ export function ProspectForm() {
                 <div className="flex space-x-2">
                   <Button
                     variant="outline"
-                    disabled={stream.isLoading}
+                    disabled={stream.isLoading || isDiscarding}
                     onClick={() => handleInterruptResponse({ type: "reject" })}
                   >
-                    Discard
+                    {isDiscarding ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Discarding...
+                      </>
+                    ) : (
+                      "Discard"
+                    )}
                   </Button>
                   <Button
-                    disabled={stream.isLoading}
+                    disabled={stream.isLoading || isSending}
                     onClick={() => handleInterruptResponse({ type: "accept" })}
                   >
                     {isSending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Sending...
-                      </>
-                    ) : stream.isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Generating...
                       </>
                     ) : (
                       "Send"
