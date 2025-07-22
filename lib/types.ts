@@ -2,16 +2,20 @@ import { Message } from "@langchain/langgraph-sdk";
 import z from "zod";
 import { formSchema } from "./schemas";
 
-export type InterruptValue = {
-  question: string;
-  to: string;
+type EmailContent = {
   subject: string;
   body: string;
 };
 
+// export type InterruptValue = {
+//   question: string;
+//   to: string;
+// } & EmailContent;
+
 export type InterruptResponse = {
-  type: "accept" | "reject" | "feedback";
+  type: "accept" | "edit" | "feedback";
   feedback?: string;
+  email_content?: EmailContent;
 };
 
 export type FormValues = z.infer<typeof formSchema>;
@@ -20,9 +24,6 @@ export type FormValues = z.infer<typeof formSchema>;
 export type ThreadState = {
   prospect_info?: FormValues;
   messages?: Message[];
-  email_content?: {
-    subject: string;
-    body: string;
-  };
+  email_content?: EmailContent;
   feedback?: string;
 };
