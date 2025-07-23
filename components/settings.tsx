@@ -53,7 +53,7 @@ export function Settings() {
           />
         </div>
         <DialogFooter>
-          <Button onClick={handleSave} disabled={apiKey.length === 0}>Save</Button>
+          <Button onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

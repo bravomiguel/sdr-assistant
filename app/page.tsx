@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -45,23 +45,26 @@ export default function Home() {
 
 function InputFormCard() {
   const { form, isInitGen, setIsInitGen } = useFormContext();
-  const { submit } = useStreamContext();
+  const { submit, apiKey } = useStreamContext();
 
   const onSubmit = async (values: FormValues) => {
     setIsInitGen(true);
 
     await sleep(600);
 
+    const config = {
+      configurable: {
+        user_id: "walt-boxwell",
+        api_key: apiKey,
+      },
+    };
+
     submit(
       {
         prospect_info: values,
       },
       {
-        config: {
-          configurable: {
-            user_id: "walt-boxwell",
-          },
-        },
+        config,
         streamMode: ["values"],
       }
     );
@@ -203,7 +206,7 @@ function InputFormCard() {
 function EmailCard() {
   const { form, handleNewForm, toEmail } = useFormContext();
   const { setActiveThreadId } = useThreads();
-  const { submit, ...stream } = useStreamContext();
+  const { submit, apiKey, ...stream } = useStreamContext();
 
   const [showFeedbackInput, setShowFeedbackInput] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
@@ -221,8 +224,8 @@ function EmailCard() {
   const [isSubjectChanged, setIsSubjectChanged] = useState(false);
   const [isBodyChanged, setIsBodyChanged] = useState(false);
 
-  console.log({ subject, isSubjectChanged });
-  console.log({ emailBody, isBodyChanged });
+  // console.log({ subject, isSubjectChanged });
+  // console.log({ emailBody, isBodyChanged });
 
   // Reset local state whenever the streamed draft changes
   useEffect(() => {
@@ -236,6 +239,13 @@ function EmailCard() {
   }, [stream.values.email_content?.subject, stream.values.email_content?.body]);
 
   const handleInterruptResponse = ({ type }: InterruptResponse) => {
+    const config = {
+      configurable: {
+        user_id: "walt-boxwell",
+        api_key: apiKey,
+      },
+    };
+
     if (type === "accept") {
       setIsSending(true);
       submit(
