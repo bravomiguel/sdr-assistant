@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import { ChevronLeft, Loader2, X } from "lucide-react";
 import { useStreamContext } from "@/providers/stream-provider";
 import { FormValues, InterruptResponse } from "@/lib/types";
 import { useThreads } from "@/providers/thread-provider";
-import { sleep } from "@/lib/utils";
+import { parseStreamingContent, sleep } from "@/lib/utils";
 import { useFormContext } from "@/providers/form-provider";
 import { defaultValues } from "@/lib/constants";
 
@@ -66,6 +66,7 @@ function InputFormCard() {
       {
         config,
         streamMode: ["values"],
+        // streamMode: ["messages-tuple"],
       }
     );
   };
@@ -204,7 +205,7 @@ function InputFormCard() {
 }
 
 function EmailCard() {
-  const { form, handleNewForm, toEmail } = useFormContext();
+  const { form, handleNewForm, toEmail, setIsInitGen } = useFormContext();
   const { setActiveThreadId } = useThreads();
   const { submit, apiKey, ...stream } = useStreamContext();
 
@@ -212,31 +213,65 @@ function EmailCard() {
   const [feedbackText, setFeedbackText] = useState("");
   const [isSending, setIsSending] = useState(false);
 
-  // Local editable state for the email subject and body
-  const [subject, setSubject] = useState(
-    stream.values.email_content?.subject || ""
-  );
-  const [emailBody, setEmailBody] = useState(
-    stream.values.email_content?.body || ""
-  );
+  // Get current email content - prioritize structured data when available
+  const getCurrentEmailContent = () => {
+    // If we have structured email_content, use it (generation complete)
+    if (
+      stream.values.email_content?.subject ||
+      stream.values.email_content?.body
+    ) {
+      return {
+        subject: stream.values.email_content.subject || "",
+        body: stream.values.email_content.body || "",
+        isStreaming: false,
+      };
+    }
 
-  // Track whether the user has modified the draft from its original streamed values
+    // Otherwise, parse from streaming messages (generation in progress)
+    const lastMessage = stream.messages?.[stream.messages.length - 1];
+    if (lastMessage?.content && typeof lastMessage.content === "string") {
+      const parsed = parseStreamingContent(lastMessage.content);
+      return {
+        subject: parsed.subject,
+        body: parsed.body,
+        isStreaming: stream.isLoading,
+      };
+    }
+
+    return {
+      subject: "",
+      body: "",
+      isStreaming: stream.isLoading,
+    };
+  };
+
+  const currentContent = useMemo(() => {  
+    return getCurrentEmailContent();  
+  }, [  
+    stream.values.email_content?.subject,  
+    stream.values.email_content?.body,   
+    stream.messages,  
+    stream.isLoading  
+  ]);
+
+  // Local editable state for the email subject and body
+  const [subject, setSubject] = useState(currentContent.subject);
+  const [emailBody, setEmailBody] = useState(currentContent.body);
+
+  // Track whether the user has modified the draft from its original values
   const [isSubjectChanged, setIsSubjectChanged] = useState(false);
   const [isBodyChanged, setIsBodyChanged] = useState(false);
 
   // console.log({ subject, isSubjectChanged });
   // console.log({ emailBody, isBodyChanged });
 
-  // Reset local state whenever the streamed draft changes
+  // Update local state when content changes (either from streaming or structured)
   useEffect(() => {
-    const newSubject = stream.values.email_content?.subject || "";
-    const newBody = stream.values.email_content?.body || "";
-
-    setSubject(newSubject);
-    setEmailBody(newBody);
+    setSubject(currentContent.subject);
+    setEmailBody(currentContent.body);
     setIsSubjectChanged(false);
     setIsBodyChanged(false);
-  }, [stream.values.email_content?.subject, stream.values.email_content?.body]);
+  }, [currentContent.subject, currentContent.body]);
 
   const handleInterruptResponse = ({ type }: InterruptResponse) => {
     const config = {
@@ -312,6 +347,7 @@ function EmailCard() {
           className="absolute left-2"
           onClick={() => {
             form.reset(stream.values?.prospect_info || defaultValues);
+            setIsInitGen(false);
             setActiveThreadId(null);
           }}
         >
