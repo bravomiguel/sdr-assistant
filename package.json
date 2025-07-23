@@ -13,6 +13,7 @@
     "@langchain/core": "^0.3.66",
     "@langchain/langgraph-sdk": "^0.0.99",
     "@radix-ui/react-avatar": "^1.1.10",
+    "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@tanstack/react-query": "^5.83.0",

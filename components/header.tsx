@@ -3,6 +3,7 @@
 import { Plus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Settings } from '@/components/settings';
 import { useFormContext } from "@/providers/form-provider";
 
 export function Header() {
@@ -22,10 +23,13 @@ export function Header() {
 
       <h1 className="text-lg font-semibold">SDR Assistant</h1>
 
-      <Avatar>
-        <AvatarImage src="/avatar.png" alt="User" />
-        <AvatarFallback>W</AvatarFallback>
-      </Avatar>
+      <div className="flex items-center gap-x-2">
+        <Settings />
+        <Avatar>
+          <AvatarImage src="/avatar.png" alt="User" />
+          <AvatarFallback>W</AvatarFallback>
+        </Avatar>
+      </div>
     </header>
   );
 }
