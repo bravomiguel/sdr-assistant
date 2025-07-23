@@ -65,7 +65,7 @@ function InputFormCard() {
         streamMode: ["values"],
       }
     );
-  };  
+  };
 
   return (
     <Card className="w-full flex flex-col h-full">
@@ -249,13 +249,17 @@ function EmailCard() {
     }
 
     if (type === "edit") {
+      setIsSending(true);
       submit(
         {},
         {
           command: {
             resume: {
               type,
-              email_content: stream.values?.email_content,
+              email_content: {
+                subject: subject,
+                body: emailBody,
+              },
             },
           },
         }
@@ -423,7 +427,13 @@ function EmailCard() {
               </Button>
               <Button
                 disabled={stream.isLoading || isSending}
-                onClick={() => handleInterruptResponse({ type: "accept" })}
+                onClick={() => {
+                  if (isSubjectChanged || isBodyChanged) {
+                    handleInterruptResponse({ type: "edit" });
+                  } else {
+                    handleInterruptResponse({ type: "accept" });
+                  }
+                }}
               >
                 {isSending ? (
                   <>
