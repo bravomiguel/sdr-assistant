@@ -438,6 +438,10 @@ function EmailCard() {
                   className="px-6"
                   onClick={() => {
                     // Reset email content and trigger regeneration
+                    setSubject("");
+                    setEmailBody("");
+                    setIsSubjectChanged(false);
+                    setIsBodyChanged(false);
                     handleInterruptResponse({
                       type: "feedback",
                       feedback: feedbackText,
