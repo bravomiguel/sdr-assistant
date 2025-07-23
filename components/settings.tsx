@@ -13,24 +13,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Settings as SettingsIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useStreamContext } from "@/providers/stream-provider";
 import { toast } from "sonner";
 
 export function Settings() {
   const [open, setOpen] = useState(false);
-  const [apiKey, setApiKey] = useState("");
-
-  useEffect(() => {
-    if (open) {
-      const storedApiKey = localStorage.getItem("openai_api_key");
-      if (storedApiKey) {
-        setApiKey(storedApiKey);
-      }
-    }
-  }, [open]);
+  const { apiKey, setApiKey } = useStreamContext();
 
   const handleSave = () => {
-    localStorage.setItem("openai_api_key", apiKey);
     toast.success("API key saved.");
     setOpen(false);
   };

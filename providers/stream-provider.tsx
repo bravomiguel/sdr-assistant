@@ -34,10 +34,36 @@ const useTypedStream = useStream<
   }
 >;
 
-type StreamContextType = ReturnType<typeof useTypedStream>;
+type StreamContextTypeBase = ReturnType<typeof useTypedStream>;
+
+export type StreamContextType = StreamContextTypeBase & {
+  apiKey: string;
+  setApiKey: React.Dispatch<React.SetStateAction<string>>;
+};
 const StreamContext = createContext<StreamContextType | null>(null);
 
 export function StreamProvider({ children }: StreamProviderProps) {
+  // API key state shared across the app
+  const [apiKey, setApiKey] = React.useState<string>("");
+
+  console.log({ apiKey });
+
+  // Load saved key once on mount (client-side only)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem("openai_api_key");
+    if (stored) setApiKey(stored);
+  }, []);
+
+  // Persist whenever apiKey changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (apiKey) {
+      localStorage.setItem("openai_api_key", apiKey);
+    } else {
+      localStorage.removeItem("openai_api_key");
+    }
+  }, [apiKey]);
   const { activeThreadId, setActiveThreadId } = useThreads();
   const lastError = useRef<string | undefined>(undefined);
 
@@ -83,8 +109,16 @@ export function StreamProvider({ children }: StreamProviderProps) {
     }
   }, [streamValue.error]);
 
+  const contextValue = React.useMemo<StreamContextType>(() => (
+    {
+      ...streamValue,
+      apiKey,
+      setApiKey,
+    }
+  ), [streamValue, apiKey]);
+
   return (
-    <StreamContext.Provider value={streamValue}>
+    <StreamContext.Provider value={contextValue}>
       {children}
     </StreamContext.Provider>
   );
