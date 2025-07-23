@@ -27,3 +27,11 @@ export type ThreadState = {
   email_content?: EmailContent;
   feedback?: string;
 };
+
+export type AssistantConfig = {
+  user_id?: string;
+  user_name?: string;
+  model?: string;
+  api_key?: string;
+  system_prompt?: string;
+};

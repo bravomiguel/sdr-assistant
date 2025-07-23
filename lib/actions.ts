@@ -1,11 +1,11 @@
-'use server';
+"use server";
 
-import { Client, Thread } from '@langchain/langgraph-sdk';
+import { Client, Thread } from "@langchain/langgraph-sdk";
 // import { LangGraphToolSet } from 'composio-core';
 // import { redirect } from 'next/navigation';
 
 // import { auth } from '@/auth';
-import { ThreadState } from './types';
+import { ThreadState } from "./types";
 
 const apiUrl = process.env.LANGGRAPH_API_URL;
 // const apiKey = process.env.LANGGRAPH_API_KEY;
@@ -41,6 +41,107 @@ const client = new Client({
 //   }
 // }
 
+export async function getDefaultConfigAction(graphId: string = "agent") {
+  try {
+    // First get the assistant
+    const assistants = await client.assistants.search({
+      graphId: graphId,
+      limit: 1,
+      offset: 0,
+    });
+
+    if (assistants.length === 0) {
+      return {
+        success: false,
+        error: `No assistants found for graph ID: ${graphId}`,
+      };
+    }
+
+    const assistant = assistants[0];
+
+    // Get the configuration schema which includes default values
+    const schema = await client.assistants.getSchemas(assistant.assistant_id);
+
+    // Extract default values from the schema
+    const configSchema = schema.config_schema;
+    const defaultConfig: Record<string, unknown> = {};
+
+    if (configSchema?.properties) {
+      for (const [key, value] of Object.entries(configSchema.properties)) {
+        if (value && typeof value === "object" && "default" in value) {
+          defaultConfig[key] = value.default;
+        }
+      }
+    }
+
+    return {
+      success: true,
+      data: defaultConfig,
+    };
+  } catch (error) {
+    console.error("Failed to retrieve configuration:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+export async function getAssistantAction(graphId: string = "agent") {
+  try {
+    // First get the assistant
+    const assistants = await client.assistants.search({
+      graphId: graphId,
+      limit: 1,
+      offset: 0,
+    });
+
+    if (assistants.length === 0) {
+      return {
+        success: false,
+        error: `No assistants found for graph ID: ${graphId}`,
+      };
+    }
+
+    const assistant = assistants[0];
+
+    // Get the configuration schema which includes default values
+    const schema = await client.assistants.getSchemas(assistant.assistant_id);
+
+    // Extract default values from the schema
+    const configSchema = schema.config_schema;
+    const defaultConfig: Record<string, unknown> = {};
+
+    if (configSchema?.properties) {
+      for (const [key, value] of Object.entries(configSchema.properties)) {
+        if (value && typeof value === "object" && "default" in value) {
+          defaultConfig[key] = value.default;
+        }
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        assistantId: assistant.assistant_id,
+        config: assistant.config.configurable || defaultConfig,
+        schema: configSchema,
+        defaultConfig,
+        metadata: assistant.metadata,
+        version: assistant.version,
+        name: assistant.name,
+        graphId: assistant.graph_id,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to retrieve configuration:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
 export async function createThreadAction(): Promise<Thread<ThreadState>> {
   try {
     // const session = await auth();
@@ -56,7 +157,7 @@ export async function createThreadAction(): Promise<Thread<ThreadState>> {
 
     return thread as Thread<ThreadState>;
   } catch (error) {
-    console.error('Failed to create thread:', error);
+    console.error("Failed to create thread:", error);
     throw error;
   }
 }
@@ -68,7 +169,7 @@ export async function deleteThreadAction(threadId: string) {
     await client.threads.delete(threadId);
     return { success: true };
   } catch (error) {
-    console.error('Failed to delete thread:', error);
+    console.error("Failed to delete thread:", error);
     throw error;
   }
 }

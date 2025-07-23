@@ -45,7 +45,7 @@ export default function Home() {
 
 function InputFormCard() {
   const { form, isInitGen, setIsInitGen } = useFormContext();
-  const { submit, apiKey } = useStreamContext();
+  const { submit, apiKey, systemPrompt } = useStreamContext();
 
   const onSubmit = async (values: FormValues) => {
     setIsInitGen(true);
@@ -56,6 +56,7 @@ function InputFormCard() {
       configurable: {
         user_id: "walt-boxwell",
         api_key: apiKey,
+        system_prompt: systemPrompt,
       },
     };
 
@@ -66,7 +67,6 @@ function InputFormCard() {
       {
         config,
         streamMode: ["values"],
-        // streamMode: ["messages-tuple"],
       }
     );
   };
@@ -207,7 +207,7 @@ function InputFormCard() {
 function EmailCard() {
   const { form, handleNewForm, toEmail, setIsInitGen } = useFormContext();
   const { setActiveThreadId } = useThreads();
-  const { submit, apiKey, ...stream } = useStreamContext();
+  const { submit, apiKey, systemPrompt, ...stream } = useStreamContext();
 
   const [showFeedbackInput, setShowFeedbackInput] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
@@ -245,13 +245,13 @@ function EmailCard() {
     };
   };
 
-  const currentContent = useMemo(() => {  
-    return getCurrentEmailContent();  
-  }, [  
-    stream.values.email_content?.subject,  
-    stream.values.email_content?.body,   
-    stream.messages,  
-    stream.isLoading  
+  const currentContent = useMemo(() => {
+    return getCurrentEmailContent();
+  }, [
+    stream.values.email_content?.subject,
+    stream.values.email_content?.body,
+    stream.messages,
+    stream.isLoading,
   ]);
 
   // Local editable state for the email subject and body
@@ -278,6 +278,7 @@ function EmailCard() {
       configurable: {
         user_id: "walt-boxwell",
         api_key: apiKey,
+        system_prompt: systemPrompt,
       },
     };
 
