@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 import { useThreads } from "./thread-provider";
 import { ThreadState } from "@/lib/types";
+import { useFormContext } from "./form-provider";
 
 type StreamProviderProps = {
   children: React.ReactNode;
@@ -43,10 +44,12 @@ export type StreamContextType = StreamContextTypeBase & {
 const StreamContext = createContext<StreamContextType | null>(null);
 
 export function StreamProvider({ children }: StreamProviderProps) {
+  const { isInitGen, setIsInitGen } = useFormContext();
+
   // API key state shared across the app
   const [apiKey, setApiKey] = React.useState<string>("");
 
-  console.log({ apiKey });
+  // console.log({ apiKey });
 
   // Load saved key once on mount (client-side only)
   useEffect(() => {
@@ -104,21 +107,32 @@ export function StreamProvider({ children }: StreamProviderProps) {
         richColors: true,
         closeButton: true,
       });
+
+      if (isInitGen) {
+        setIsInitGen(false);
+      }
     } catch {
       // no-op
     }
-  }, [streamValue.error]);
+  }, [streamValue.error, isInitGen, setIsInitGen]);
 
-  const contextValue = React.useMemo<StreamContextType>(() => (
-    {
-      ...streamValue,
-      apiKey,
-      setApiKey,
-    }
-  ), [streamValue, apiKey]);
+  // const contextValue = React.useMemo<StreamContextType>(
+  //   () => ({
+  //     ...streamValue,
+  //     apiKey,
+  //     setApiKey,
+  //   }),
+  //   [streamValue, apiKey]
+  // );
 
   return (
-    <StreamContext.Provider value={contextValue}>
+    <StreamContext.Provider
+      value={{
+        ...streamValue,
+        apiKey,
+        setApiKey,
+      }}
+    >
       {children}
     </StreamContext.Provider>
   );

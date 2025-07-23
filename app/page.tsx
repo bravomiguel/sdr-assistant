@@ -65,7 +65,8 @@ function InputFormCard() {
         streamMode: ["values"],
       }
     );
-  };
+  };  
+
   return (
     <Card className="w-full flex flex-col h-full">
       <CardHeader className="flex-shrink-0">
@@ -208,7 +209,31 @@ function EmailCard() {
   const [feedbackText, setFeedbackText] = useState("");
   const [isSending, setIsSending] = useState(false);
 
-  const emailBodyRef = useRef<HTMLTextAreaElement>(null);
+  // Local editable state for the email subject and body
+  const [subject, setSubject] = useState(
+    stream.values.email_content?.subject || ""
+  );
+  const [emailBody, setEmailBody] = useState(
+    stream.values.email_content?.body || ""
+  );
+
+  // Track whether the user has modified the draft from its original streamed values
+  const [isSubjectChanged, setIsSubjectChanged] = useState(false);
+  const [isBodyChanged, setIsBodyChanged] = useState(false);
+
+  console.log({ subject, isSubjectChanged });
+  console.log({ emailBody, isBodyChanged });
+
+  // Reset local state whenever the streamed draft changes
+  useEffect(() => {
+    const newSubject = stream.values.email_content?.subject || "";
+    const newBody = stream.values.email_content?.body || "";
+
+    setSubject(newSubject);
+    setEmailBody(newBody);
+    setIsSubjectChanged(false);
+    setIsBodyChanged(false);
+  }, [stream.values.email_content?.subject, stream.values.email_content?.body]);
 
   const handleInterruptResponse = ({ type }: InterruptResponse) => {
     if (type === "accept") {
@@ -286,7 +311,7 @@ function EmailCard() {
             <div className="space-y-2 flex-shrink-0">
               <FormLabel>To</FormLabel>
               <Input
-                value={toEmail || stream.values.prospect_info?.email}
+                value={toEmail || stream.values.prospect_info?.email || ""}
                 readOnly
               />
             </div>
@@ -294,7 +319,14 @@ function EmailCard() {
             <div className="space-y-2 flex-shrink-0">
               <FormLabel>Subject</FormLabel>
               <Input
-                value={stream.values.email_content?.subject || ""}
+                value={subject}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSubject(val);
+                  setIsSubjectChanged(
+                    val !== (stream.values.email_content?.subject || "")
+                  );
+                }}
                 className={stream.isLoading ? "animate-pulse" : ""}
               />
             </div>
@@ -303,8 +335,14 @@ function EmailCard() {
               <FormLabel className="flex-shrink-0">Email Body</FormLabel>
               <div className="flex-grow relative min-h-0">
                 <Textarea
-                  ref={emailBodyRef}
-                  value={stream.values.email_content?.body || ""}
+                  value={emailBody}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEmailBody(val);
+                    setIsBodyChanged(
+                      val !== (stream.values.email_content?.body || "")
+                    );
+                  }}
                   className={`resize-none absolute inset-0 h-full w-full overflow-auto ${
                     stream.isLoading ? "animate-pulse" : ""
                   }`}

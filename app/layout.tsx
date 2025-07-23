@@ -35,9 +35,9 @@ export default function RootLayout({
         <NuqsAdapter>
           <Toaster position="top-center" />
           <ThreadProvider>
-            <StreamProvider>
-              <FormProvider>{children}</FormProvider>
-            </StreamProvider>
+            <FormProvider>
+              <StreamProvider>{children}</StreamProvider>
+            </FormProvider>
           </ThreadProvider>
         </NuqsAdapter>
       </body>
