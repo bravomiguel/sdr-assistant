@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ThreadProvider } from "@/providers/thread-provider";
@@ -29,7 +30,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   const { data: defaultConfig } = await getDefaultConfigAction();
   // console.log(defaultConfig);
 
@@ -38,14 +38,20 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <NuqsAdapter>
-          <Toaster position="top-center" />
-          <ThreadProvider>
-            <FormProvider>
-              <StreamProvider defaultConfig={defaultConfig as AssistantConfig} >{children}</StreamProvider>
-            </FormProvider>
-          </ThreadProvider>
-        </NuqsAdapter>
+        <Suspense fallback={null}>
+          <NuqsAdapter>
+            <Toaster position="top-center" />
+            <ThreadProvider>
+              <FormProvider>
+                <StreamProvider
+                  defaultConfig={defaultConfig as AssistantConfig}
+                >
+                  {children}
+                </StreamProvider>
+              </FormProvider>
+            </ThreadProvider>
+          </NuqsAdapter>
+        </Suspense>
       </body>
     </html>
   );
